@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+<meta name="author" content="Jason Baik" />
+
+
+<title>Examining Repeatability in Different Rush Situations</title>
+
+<script src="blog_post_final_files/jquery-1.11.3/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="blog_post_final_files/bootstrap-3.3.5/css/paper.min.css" rel="stylesheet" />
+<script src="blog_post_final_files/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="blog_post_final_files/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="blog_post_final_files/bootstrap-3.3.5/shim/respond.min.js"></script>
+<script src="blog_post_final_files/jqueryui-1.11.4/jquery-ui.min.js"></script>
+<link href="blog_post_final_files/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="blog_post_final_files/tocify-1.9.1/jquery.tocify.js"></script>
+<script src="blog_post_final_files/navigation-1.1/tabsets.js"></script>
+<script src="blog_post_final_files/navigation-1.1/codefolding.js"></script>
+<link href="blog_post_final_files/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="blog_post_final_files/highlightjs-9.12.0/highlight.js"></script>
+<script src="blog_post_final_files/kePrint-0.0.1/kePrint.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+<style type="text/css">
+h1 {
+  font-size: 34px;
+}
+h1.title {
+  font-size: 38px;
+}
+h2 {
+  font-size: 30px;
+}
+h3 {
+  font-size: 24px;
+}
+h4 {
+  font-size: 18px;
+}
+h5 {
+  font-size: 16px;
+}
+h6 {
+  font-size: 12px;
+}
+.table th:not([align]) {
+  text-align: left;
+}
+</style>
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+code {
+  color: inherit;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+img {
+  max-width:100%;
+  height: auto;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+</style>
+
+
+
+<div class="container-fluid main-container">
+
+<!-- tabsets -->
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+</script>
+
+<!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
+
+
+
+
+<script>
+$(document).ready(function ()  {
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_').toLowerCase();
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
+
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+  padding-left: 25px;
+  text-indent: 0;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row-fluid">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
+
+
+
+
+<div class="fluid-row" id="header">
+
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
+
+
+<h1 class="title toc-ignore">Examining Repeatability in Different Rush Situations</h1>
+<h4 class="author"><em>Jason Baik</em></h4>
+<h4 class="date"><em>6/7/2018</em></h4>
+
+</div>
+
+
+<div id="key-takeaways" class="section level1">
+<h1>Key Takeaways</h1>
+<p>(TODO: Revise this part)</p>
+</div>
+<div id="introduction" class="section level1">
+<h1>Introduction</h1>
+<p>Have you ever wondered about the numbers behind offensive player advantage (odd man) rushes? Are the number of shots repeatable over an entire season? What about shooting percentages? If they are repeatable, do zones of the primary pass (a pass right before a shot) affect this repeatability? And what about rebounds and rebound shooting percentages (the goals scored off of rebounds)?</p>
+<p>To investigate these questions, I will be using the Passing Project Data from the 2015-2016, 2016-2017, and 2017-2018 NHL seasons organized by <a href="https://twitter.com/RK_Stimp">Ryan Stimson</a> and <a href="https://twitter.com/ShutdownLine">Corey Sznajder</a>. The data was collected by a group of volunteers who tracked every pass leading to a shot. According to Ryan’s <a href="http://www.sloansportsconference.com/wp-content/uploads/2017/02/1614.pdf">MIT Sloan Sports Analytics Conference paper</a>, “Each tracker was required to complete 2 - 3 training games for validation by the project leader to ensure consistency in classification of passes and recording of data. Occasional spot-checking of games was also conducted.”</p>
+<p>I would like to thank my mentor of the Hockey Graphs Mentorship Program, Sam Ventura, for his time and advice.</p>
+<div id="data" class="section level2">
+<h2>Data</h2>
+<pre class="r"><code>pass_final %&gt;% 
+  select(shot_on_goal, goal, odd_man, shot_type, a1_zone, rebound_shot_on_goal) %&gt;% 
+  head(10) %&gt;% 
+  kable() %&gt;% 
+  kable_styling(bootstrap_options = &quot;striped&quot;)</code></pre>
+<table class="table table-striped" style="margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:right;">
+shot_on_goal
+</th>
+<th style="text-align:right;">
+goal
+</th>
+<th style="text-align:left;">
+odd_man
+</th>
+<th style="text-align:left;">
+shot_type
+</th>
+<th style="text-align:left;">
+a1_zone
+</th>
+<th style="text-align:right;">
+rebound_shot_on_goal
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+nl
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+of
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+T
+</td>
+<td style="text-align:left;">
+ol
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+dsl
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+S
+</td>
+<td style="text-align:left;">
+or
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+nc
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+3-2
+</td>
+<td style="text-align:left;">
+T
+</td>
+<td style="text-align:left;">
+ol
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+T
+</td>
+<td style="text-align:left;">
+ol
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+dsl
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+<tr>
+<td style="text-align:right;">
+1
+</td>
+<td style="text-align:right;">
+0
+</td>
+<td style="text-align:left;">
+NA
+</td>
+<td style="text-align:left;">
+W
+</td>
+<td style="text-align:left;">
+nl
+</td>
+<td style="text-align:right;">
+0
+</td>
+</tr>
+</tbody>
+</table>
+<p>There are 45 variables and over 150,000 observations in this dataset. Some notable variables that I will be using for my analysis include shot_on_goal (1 for yes and 0 for no), goal (1 for yes and 0 for no), odd_man (number of players involved in player advantages during rushes), shooting_percentage (number of goals / number of shots on goals), shot_type (one-timer, slap shot, wrist/snap shot, backhand, etc), a1_zone (zone that the primary assist originated), and rebound_shot_on_goal (if a rebound occured and resulted in a shot on goal).</p>
+<p>There are two analysis based upon this datset; <a href="http://www.sloansportsconference.com/wp-content/uploads/2017/02/1614.pdf">Ryan Stimson’s paper</a> discusses repeatability of certain metrics on a team level and player level. <a href="https://www.nhlnumbers.com/2016/08/10/passing-project-dangerous-primary-shot-contributions">A NHL Numbers post</a> covers repeatability of passes that crosses through the royal road (the line that goes directly through the middle of the ice from one net to the other) and provides visualizations.</p>
+<p>In my blog post, I will look at <em>repeatability</em> of shots taken during rushes with player advantages, shooting percentages, rebound shots, and rebound shooting percentages in 5 on 5 situations.</p>
+</div>
+<div id="visual-identification-of-linear-regression-graphs-and-repeatability" class="section level2">
+<h2>Visual Identification of Linear Regression Graphs and Repeatability</h2>
+<p>This article is filled with scatterplots with linear regression lines. I’ve grouped the data by teams and plotted the first half statistics from the 2015-2016, 2016-2017, and 2017-2018 seasons on the x-axis, the second half statistics from the 2015-2016, 2016-2017, and 2017-2018 season the on the y-axis, and generated a smoothed line with a confidence band. It is a 95% confidence interval on the slope of the regression line.</p>
+<ul>
+<li>If I can draw a horizontal line through the confidence bands, this means there exists a regression line with a slope of 0. This further indicates that there is <em>no significant relationship between the x-variable and the y-variable.</em></li>
+<li>If I can not draw a horizontal line through the confidence bands, this means that a regression line with a slope of 0 falls outside the 95% confidence band. In other words, there is <em>a significant relationship between the x-variable and the y-variable.</em></li>
+</ul>
+<p>In this analysis, I designated the midpoint of each of the three seasons as Jan 1st. All the games before that date are labelled as the first half of the season while the games after that date are labelled as the second half. In terms of the linear regression graphs, the x-variable is a statistic from the first half of the season and the y-variable is a statistic from the second half of the season. As a result, we are really examining the relationship between the past and future of a statistic, or the <em>repeatability</em> of a statistic.</p>
+</div>
+</div>
+<div id="repeatability-of-odd-man-rush-shots" class="section level1">
+<h1>Repeatability of odd-man rush shots</h1>
+<p>First, let’s examine if shots taken in rushes with player advantages are repeatable.</p>
+<pre class="r"><code>pass_odd_man &lt;- pass_final %&gt;%
+  filter(strength == &quot;5v5&quot;) %&gt;% 
+  # Further divide odd_man rushes by number of advantage in men
+  mutate(odd_man = ifelse(odd_man == &quot;NA-NA&quot;, &quot;non_odd_man&quot;,
+                          ifelse(odd_man %in% c(&quot;1-0&quot;, &quot;2-1&quot;, &quot;3-2&quot;, &quot;4-3&quot;), &quot;one_man&quot;, 
+                                 ifelse(odd_man %in% c(&quot;2-0&quot;, &quot;3-1&quot;, &quot;4-2&quot;, &quot;3-0&quot;), &quot;two_plus_man&quot;,
+                                        &quot;NA&quot;)))) %&gt;% 
+  mutate(half = case_when(
+    date &lt;= as.Date(&quot;2016-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2016-01-01&quot;) &amp; date &lt; as.Date(&quot;2016-07-01&quot;) ~ &quot;second&quot;,
+    date &gt;= as.Date(&quot;2016-10-01&quot;) &amp; date &lt;= as.Date(&quot;2017-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2017-01-01&quot;) &amp; date &lt; as.Date(&quot;2017-07-01&quot;) ~ &quot;second&quot;,
+    date &gt;= as.Date(&quot;2017-10-01&quot;) &amp; date &lt;= as.Date(&quot;2018-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2018-01-01&quot;) &amp; date &lt;= as.Date(&quot;2018-07-01&quot;) ~ &quot;second&quot;
+  )) %&gt;% 
+  group_by(team, season, half, odd_man) %&gt;%
+  # Get total number of shots for each team, half, odd man situation
+  summarise(shots = n()) %&gt;% 
+  filter(!is.na(team), !is.na(half)) %&gt;%
+  spread(key = half, value = shots, fill = 0) %&gt;% 
+  ungroup() %&gt;% 
+  filter(odd_man != &quot;NA&quot;)</code></pre>
+<pre class="r"><code>### Note:At this point, I realized that the number of rows of teams did not match the number of rows of urls of team logos, so I decided to create a function
+
+# Create a function to match number of rows of team logos urls to number of rows for each team
+match_logo &lt;- function(df) {
+  # Configure team logos to match values in odd_man
+  team_freq &lt;- as.data.frame(table(df[[&quot;team&quot;]]))
+  empty_list &lt;- list()
+  for (ii in seq(nrow(team_freq))) {
+    empty_list[[ii]]&lt;- rep(team_logo[ii], times =  team_freq[,2][ii])
+  }
+  
+  return(as.vector(unlist(empty_list)))
+}</code></pre>
+<pre class="r"><code># Let&#39;s add on team logo urls to pass_odd_man
+pass_odd_man &lt;- pass_odd_man %&gt;% 
+  mutate(team_logo_url = match_logo(pass_odd_man))
+
+# Let&#39;s change the labels on the facets:
+odd_man &lt;- list(
+  &quot;non_odd_man&quot; = &quot;No player advantage&quot;,
+  &quot;one_man&quot; = &quot;One player advantage&quot;,
+  &quot;two_plus_man&quot; = &quot;Two+ player advantage&quot;
+)
+
+odd_man_labeller &lt;- function(variable,value){
+  return(odd_man[value])
+}
+
+
+# Plot
+
+ggplot(pass_odd_man, aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.08) +
+  geom_smooth(method = &quot;lm&quot;) + 
+  facet_wrap(~odd_man, scales = &quot;free&quot;, labeller = odd_man_labeller) +
+  coord_fixed() +
+  labs(x = &quot;First Half Shots&quot;,
+       y = &quot;Second Half Shots&quot;) +
+  ggtitle(&quot;Repeatability of Total Shots Facetted by Odd Man Rushes&quot;) </code></pre>
+<p><img src="blog_post_final_files/figure-html/unnamed-chunk-6-1.png" width="864" /></p>
+<ul>
+<li>Shots taken on rushes where the attacking team has more players than the defending team are repeatable over a season when there is no player advantage and one player advantage (Breakaways, 2 on 1 rushes, 3 on 2 rushes, and 4 on 3 rushes).</li>
+<li>This leads me to think that its increadibly hard to predict the number of shots in two-plus player advantages (2 on 0 rushes“, 3 on 1 rushes, 4 on 2 rushes, 3 on 0 rushes) over a season.</li>
+<li>Perhaps, teams with an incredible advantage in rushes have too many options at their disposal, and thus these rushes do not always result in shots on net.</li>
+<li>Rather, they could make one extra pass that extinguishes the offensive threat or the extra pass could be intercepted by the defender(s).</li>
+<li>As there is <em>no repeatability</em> in two plus player advantage, I will ignore these situations for this analysis.</li>
+</ul>
+</div>
+<div id="repeatability-of-shooting-percentage" class="section level1">
+<h1>Repeatability of shooting percentage</h1>
+<p>Let’s examine shooting percentages and see if we can detect the same trend.</p>
+<pre class="r"><code>pass_shooting_percentage &lt;- pass_final %&gt;%
+  filter(strength == &quot;5v5&quot;) %&gt;% 
+  mutate(odd_man = ifelse(odd_man == &quot;NA-NA&quot;, &quot;non_odd_man&quot;,
+                          ifelse(odd_man %in% c(&quot;1-0&quot;, &quot;2-1&quot;, &quot;3-2&quot;, &quot;4-3&quot;), &quot;one_man&quot;, 
+                                 ifelse(odd_man %in% c(&quot;2-0&quot;, &quot;3-1&quot;, &quot;4-2&quot;, &quot;3-0&quot;), &quot;two_plus_man&quot;,
+                                        &quot;NA&quot;)))) %&gt;% 
+  mutate(half = case_when(
+    date &lt;= as.Date(&quot;2016-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2016-01-01&quot;) &amp; date &lt; as.Date(&quot;2016-07-01&quot;) ~ &quot;second&quot;,
+    date &gt;= as.Date(&quot;2016-10-01&quot;) &amp; date &lt;= as.Date(&quot;2017-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2017-01-01&quot;) &amp; date &lt; as.Date(&quot;2017-07-01&quot;) ~ &quot;second&quot;,
+    date &gt;= as.Date(&quot;2017-10-01&quot;) &amp; date &lt;= as.Date(&quot;2018-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2018-01-01&quot;) &amp; date &lt;= as.Date(&quot;2018-07-01&quot;) ~ &quot;second&quot;
+  )) %&gt;% 
+  group_by(team, season, half, odd_man) %&gt;% 
+  # Calculate the shooting percentage, defined as the number of goals over the number of shots on goal
+  summarise(shooting_percentage = 100 * (sum(goal) / sum(shot_on_goal))) %&gt;% 
+  filter(!is.na(team), !is.na(half)) %&gt;%
+  spread(key = half, value = shooting_percentage) %&gt;% 
+  ungroup() %&gt;% 
+  mutate(team_logo_url = match_logo(.))
+
+# Ignore two_plus_man
+pass_shooting_percentage %&gt;% 
+  filter(odd_man != &quot;two_plus_man&quot;, odd_man != &quot;NA&quot;) %&gt;% 
+ggplot(aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.06)+
+  geom_smooth(method = &quot;lm&quot;) +
+  facet_wrap(~odd_man, scales = &quot;free&quot;, labeller = odd_man_labeller) +
+  coord_fixed() +
+  labs(x = &quot;First Half Shooting %&quot;,
+       y = &quot;Second Half Shooting %&quot;) +
+  ggtitle(&quot;Repeatability of Shooting % Facetted by Odd Man Rushes&quot;)</code></pre>
+<p><img src="blog_post_final_files/figure-html/unnamed-chunk-7-1.png" width="864" /></p>
+<ul>
+<li>The scales for the two facetted graphs are vastly different: shooting percentages across the whole season are <em>significantly higher</em> in one player advantage rushes, which is reasonable given the offensive freedom players have.</li>
+<li>Interestingly, shooting percentages are indeed not repeatable over a season during no player advantage rushes since I can draw a horizontal graph through the confidence band.</li>
+<li>Shooting percentages are repeatable during one player advantage rushes as I can not draw a horizontal graph through the confidence band.</li>
+</ul>
+</div>
+<div id="shooting-percentages-by-zone-of-primary-pass" class="section level1">
+<h1>Shooting percentages by Zone of Primary Pass</h1>
+<p>Now, I observe the repeatability of shooting percentages facetted by the zone the primary pass (the pass right before the shot) originated from.</p>
+<pre class="r"><code>pass_shooting_percentage_zone &lt;- pass_final %&gt;%
+  filter(strength == &quot;5v5&quot;) %&gt;% 
+  mutate(half = case_when(
+    date &lt;= as.Date(&quot;2016-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2016-01-01&quot;) &amp; date &lt; as.Date(&quot;2016-07-01&quot;) ~ &quot;second&quot;,
+    date &gt;= as.Date(&quot;2016-10-01&quot;) &amp; date &lt;= as.Date(&quot;2017-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2017-01-01&quot;) &amp; date &lt; as.Date(&quot;2017-07-01&quot;) ~ &quot;second&quot;,
+    date &gt;= as.Date(&quot;2017-10-01&quot;) &amp; date &lt;= as.Date(&quot;2018-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2018-01-01&quot;) &amp; date &lt;= as.Date(&quot;2018-07-01&quot;) ~ &quot;second&quot;
+  )) %&gt;% 
+# Extract out the last letter in a1_zone, which shows the lane in which the pass originiates from
+mutate(a1_zone = substr(a1_zone, start = nchar(a1_zone), stop = nchar(a1_zone)),
+         a1_zone = tolower(a1_zone),
+         a1_zone = ifelse(a1_zone == &quot;c&quot;, &quot;center_lane&quot;,
+                          ifelse(a1_zone == &quot;f&quot;, &quot;faceoff&quot;,
+                                 ifelse(a1_zone == &quot;l&quot;, &quot;left_lane&quot;,
+                                        ifelse(a1_zone == &quot;p&quot;, &quot;point&quot;,
+                                               ifelse(a1_zone == &quot;r&quot;, &quot;right_lane&quot;, NA)))))) %&gt;% 
+  group_by(team, season, half, a1_zone) %&gt;% 
+  summarise(shooting_percentage = 100 *  (sum(goal) / sum(shot_on_goal))) %&gt;% 
+  filter(!is.na(team), !is.na(half), !is.na(a1_zone), !is.na(shooting_percentage)) %&gt;% 
+  spread(key = half, value = shooting_percentage) %&gt;% 
+  ungroup() %&gt;% 
+  mutate(team_logo_url = match_logo(.)) %&gt;% 
+  # Filter out 0% and 100% shooting percentages, which makes no sense.
+  filter(!(first %in% c(0, 100)), !(second %in% c(0, 100)))
+
+
+
+
+# Let&#39;s change the labels on the facets:
+pass_lanes &lt;- list(
+  &quot;left_lane&quot; = &quot;Left Lane&quot;,
+  &quot;faceoff&quot; = &quot;Faceoff&quot;,
+  &quot;center_lane&quot; = &quot;Center Lane&quot;,
+  &quot;point&quot; = &quot;passes back to the point&quot;,
+  &quot;right_lane&quot; = &quot;Right Lane&quot;,
+  &quot;not_categorized&quot; = &quot;None&quot;
+)
+
+pass_lanes_labeller &lt;- function(variable,value){
+  return(pass_lanes[value])
+}
+
+# Change order of facets
+pass_shooting_percentage_zone$a1_zone &lt;- factor(pass_shooting_percentage_zone$a1_zone,
+                                                levels = c(&quot;left_lane&quot;,
+                                                           &quot;faceoff&quot;,
+                                                           &quot;center_lane&quot;,
+                                                           &quot;point&quot;,
+                                                           &quot;right_lane&quot;)) 
+
+# Plot
+ pass_shooting_percentage_zone %&gt;%
+   filter(a1_zone %in% c(&quot;left_lane&quot;, &quot;center_lane&quot;, &quot;right_lane&quot;)) %&gt;% 
+   ggplot(aes(x = first, y = second)) +
+   geom_image(aes(image = team_logo_url), size = 0.09)+
+   geom_smooth(method = &quot;lm&quot;) +
+   facet_wrap(~a1_zone, scales = &quot;free&quot;, labeller = pass_lanes_labeller) +
+   labs(x = &quot;First Half Shooting %&quot;,
+        y = &quot;Second Half Shooting %&quot;) +
+   ggtitle(&quot;Repeatability of Shooting % During Odd Man Rushes Facetted By Lanes of passes&quot;)</code></pre>
+<p><img src="blog_post_final_files/figure-html/unnamed-chunk-8-1.png" width="864" /></p>
+<ul>
+<li><p>The center lane facet shows no repeatability between first half shooting percentage and second half shooting percentage, but is the closest out of all three graphs to being repeatable.</p></li>
+<li><p>None of these graphs show any signs of repeatability since I can draw a horizontal line through all these graphs.</p></li>
+<li><p>As a result, <em>the lane of a primary pass does not help explain the discrepancy in repeatability of shooting percentages in odd man rushes.</em></p></li>
+</ul>
+</div>
+<div id="repeatability-of-rebound-shots" class="section level1">
+<h1>Repeatability of rebound shots</h1>
+<p>During the course of a game, there is bound to be a rebound. Most “trash” goals scored in the “dirty” areas are scored off of a rebound. Let’s examine the repeatability of rebound shots over a season.</p>
+<pre class="r"><code>pass_final %&gt;% 
+  filter(strength == &quot;5v5&quot;) %&gt;% 
+  mutate(half = case_when(
+    date &lt;= as.Date(&quot;2016-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2016-01-01&quot;) &amp; date &lt; as.Date(&quot;2016-07-01&quot;) ~ &quot;second&quot;,
+    date &gt;= as.Date(&quot;2016-10-01&quot;) &amp; date &lt;= as.Date(&quot;2017-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2017-01-01&quot;) &amp; date &lt; as.Date(&quot;2017-07-01&quot;) ~ &quot;second&quot;,
+    date &gt;= as.Date(&quot;2017-10-01&quot;) &amp; date &lt;= as.Date(&quot;2018-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2018-01-01&quot;) &amp; date &lt;= as.Date(&quot;2018-07-01&quot;) ~ &quot;second&quot;
+  ))  %&gt;% 
+  group_by(team, season, half) %&gt;% 
+  summarise(rebound_shot_per_game = sum(rebound_shot_on_goal) / length(unique(date))) %&gt;% 
+  filter(!is.na(team), !is.na(half)) %&gt;% 
+  spread(key = half, value = rebound_shot_per_game) %&gt;% 
+  ungroup() %&gt;%
+  mutate(team_logo_url = match_logo(.)) %&gt;% 
+  ggplot(aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.04, by = &quot;height&quot;) +
+  geom_smooth(method = &quot;lm&quot;) +
+  labs(x = &quot;First Half Rebound Shots&quot;,
+       y = &quot;Second Half Rebound Shots&quot;) +
+  ggtitle(&quot;Repeatability of Rebound Shots&quot;)</code></pre>
+<p><img src="blog_post_final_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<ul>
+<li>This graph clearly shows that rebound shots are not repeatable over a given season.</li>
+<li>This suggests that rebounds are intrinsically hard to predict over an entire season. Teams face different styles of goaltenders and even different goaltenders for each team if the team plays its backup or AHL goaltender. Perhaps, goaltenders have varying abilities to control rebounds.</li>
+</ul>
+</div>
+<div id="repeatability-of-rebound-shooting-percentage" class="section level1">
+<h1>Repeatability of rebound shooting percentage</h1>
+<p>To dig deeper into the effectiveness of rebounds in offensive situations, I’ve defined <em>rebound shooting percentage as the percentage of rebound goals scored.</em> Let’s now examine its repeatability.</p>
+<pre class="r"><code>pass_final %&gt;% 
+  filter(strength == &quot;5v5&quot;) %&gt;% 
+  mutate(half = case_when(
+    date &lt;= as.Date(&quot;2016-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2016-01-01&quot;) &amp; date &lt; as.Date(&quot;2016-07-01&quot;) ~ &quot;second&quot;,
+    date &gt;= as.Date(&quot;2016-10-01&quot;) &amp; date &lt;= as.Date(&quot;2017-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2017-01-01&quot;) &amp; date &lt; as.Date(&quot;2017-07-01&quot;) ~ &quot;second&quot;,
+    date &gt;= as.Date(&quot;2017-10-01&quot;) &amp; date &lt;= as.Date(&quot;2018-01-01&quot;) ~ &quot;first&quot;,
+    date &gt; as.Date(&quot;2018-01-01&quot;) &amp; date &lt;= as.Date(&quot;2018-07-01&quot;) ~ &quot;second&quot;
+  )) %&gt;%  
+  group_by(team, season, half) %&gt;% 
+  summarise(rebound_percentage = 100 * (sum(rebound_goal) / sum(rebound_shot_on_goal))) %&gt;% 
+  filter(!is.na(team), !is.na(half)) %&gt;% 
+  spread(key = half, value = rebound_percentage) %&gt;% 
+  ungroup() %&gt;% 
+  mutate(team_logo_url = match_logo(.)) %&gt;% 
+  ggplot(aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.04, by = &quot;height&quot;) +
+  geom_smooth(method = &quot;lm&quot;) +
+  coord_fixed() +
+  labs(x = &quot;First Half Rebound %&quot;,
+       y = &quot;Second Half Rebound %&quot;) +
+  ggtitle(&quot;Repeatability of Rebound Shooting %&quot;)</code></pre>
+<p><img src="blog_post_final_files/figure-html/unnamed-chunk-10-1.png" width="864" /></p>
+<ul>
+<li>Overall, rebound shooting percentages are not repeatable since I can draw a horizontal line through the confidence band.</li>
+<li>This again suggests that rebounds are a random occurence during a hockey game.</li>
+<li>Furthermore, over an entire season, there exist unpredictable offensive situations that lead to rebounds and thus, make it impossible to predict.</li>
+</ul>
+</div>
+<div id="conclusion" class="section level1">
+<h1>Conclusion</h1>
+<p>TODO</p>
+</div>
+
+
+
+</div>
+</div>
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

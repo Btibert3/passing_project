@@ -1,0 +1,549 @@
+---
+title: "Examining Repeatability in Different Rush Situations"
+author: "Jason Baik"
+date: "6/7/2018"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+    code_folding: hide
+    theme: default
+    highlight: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=002,
+                      cache.rebuild = F, 
+                      message = F, warning = F,
+                      autodep=TRUE,
+                      error = TRUE, comment = "")
+```
+
+# Key Takeaways 
+
+(TODO: Revise this part)
+
+# Introduction
+
+![Borrowed from https://www.omha.net/news_article/show/590082?referrer_id=1063069](~/Dropbox/passing_project/offensive_rushes.gif)
+
+Have you ever wondered about the numbers behind offensive player advantage (odd man) rushes? Are the number of shots repeatable over an entire season? What about shooting percentages? If they are repeatable, do zones of the primary pass (a pass right before a shot) affect this repeatability? And what about rebounds and rebound shooting percentages (the goals scored off of rebounds)?
+
+To investigate these questions, I will be using the Passing Project Data from the 2015-2016, 2016-2017, and 2017-2018 NHL seasons organized by [Ryan Stimson](https://twitter.com/RK_Stimp) and [Corey Sznajder](https://twitter.com/ShutdownLine). The data was collected by a group of volunteers who tracked every pass leading to a shot. According to Ryan's [MIT Sloan Sports Analytics Conference paper](http://www.sloansportsconference.com/wp-content/uploads/2017/02/1614.pdf), "Each tracker was required to complete 2 - 3 training games for validation by the project leader to ensure consistency in classification of passes and recording of data. Occasional spot-checking of games was also conducted."
+
+I would like to thank my mentor of the Hockey Graphs Mentorship Program, Sam Ventura, for his time and advice.
+
+## Data
+
+```{r, include = FALSE}
+# Read and manipulate data
+library(tidyverse)
+library(ggimage)
+library(kableExtra)
+```
+
+```{r, warning = FALSE, include = FALSE}
+library(tidyverse)
+library(readxl)
+
+# 15-16 Season ------------------------------------------------------------
+
+pass_1516 <- read_excel("~/Dropbox/passing_project/passing_data_code/passing_data_1516.xlsx") %>% 
+  rename(period = Period, 
+         time = Time,
+         strength = Strength,
+         team = Team,
+         #shooter_number = Shooter,
+         shot_type = `Shot Type?`,
+         a1 = A1,
+         a2 = A2,
+         a3 = A3, 
+         a1_zone = `A1 Zone`,
+         a2_zone = `A2 Zone`,
+         a3_zone = `A3 Zone`,
+         scoring_chance_pass = `SC?`,
+         shot_on_goal = `SOG?`,
+         odd_man = Oddman,
+         goal = `G?`,
+         player_rebound = `RB/2C`,
+         rebound_shot_on_goal = `RB/2C SOG?`,
+         rebound_goal = `RB/2C G?`,
+         home_score = `Home Score State`,
+         goalie_number = Goalie,
+         game_id = `Game ID`,
+         date = Date,
+         home_team = `Home:`,
+         away_team = `Away:`) %>% 
+  mutate(scoring_chance_pass = ifelse(is.na(scoring_chance_pass), 0, 1),
+         shot_on_goal = ifelse(is.na(shot_on_goal), 0, 1),
+         goal =  ifelse(is.na(goal), 0, 1),
+         rebound_shot_on_goal = ifelse(is.na(rebound_shot_on_goal), 0, 1),
+         rebound_goal = ifelse(is.na(rebound_goal), 0, 1),
+         odd_man = paste0(substr(odd_man, 1, 1), "-",
+                          substr(odd_man, nchar(odd_man), nchar(odd_man))),
+         date = as.character(date)) %>%
+  select(-Shooter)
+
+
+# Change NA-NA to NA in odd_man column for less typing
+pass_1516[["odd_man"]] <- ifelse(pass_1516[["odd_man"]] == "NA-NA", "NA", pass_1516[["odd_man"]])
+
+# Team logos will be drawn on my graphs using the ggimage package-------------------------------------------------
+team_logo <- c("http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Ducks_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Coyotes_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Bruins_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Sabres_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/carolina.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_BlueJackets_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/calgary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/chicago.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/colorado.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Stars_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/detroit.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Oilers_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Panthers_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Kings_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Wild_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/montreal.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/newjersey.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Predators_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NY-Islanders-Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/newyorkr.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Senators_Primary.png",
+               "http://www.stickpng.com/assets/images/5a4fbba3da2b4f099b95da1a.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Penguins_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Sharks_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/stlouis.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Lightning_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_MapleLeafs_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/Vancouver_Canucks.png",
+               "https://upload.wikimedia.org/wikipedia/en/thumb/a/ac/Vegas_Golden_Knights_logo.svg/184px-Vegas_Golden_Knights_logo.svg.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Jets_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Capitals_Primary.png"
+)
+
+
+
+# 2016-2017 Season --------------------------------------------------------
+file_list_1617 <- list.files(path = "/Users/jasonbaik/Dropbox/passing_project/passing_game_regular_season_1617",
+                             full.names = TRUE)
+
+# Import and manipulate data
+# Since some games don't have column names, and this makes it hard to manipulate data, take those games out 
+file_list_1617 <- file_list_1617[-c(28, 64, 258)]
+file_list_1617 <- file_list_1617[-c(228, 186, 298, 119)]
+file_list_1617 <- file_list_1617[-295]
+
+pass_list_1617 <- lapply(file_list_1617, function(x) read_excel(x) %>% 
+                           rename(#period = Period, 
+                                  time = Time,
+                                  strength = Strength,
+                                  team = Team,
+                                  #shooter = Shooter,
+                                  shot_type = `Shot Type?`,
+                                  a1 = A1,
+                                  a2 = A2,
+                                  a3 = A3, 
+                                  a1_zone = `A1 Zone`,
+                                  a2_zone = `A2 Zone`,
+                                  a3_zone = `A3 Zone`,
+                                  scoring_chance_pass = `SC?`,
+                                  shot_on_goal = `SOG?`,
+                                  odd_man = Oddman,
+                                  goal = `G?`,
+                                  player_rebound = `RB/2C`,
+                                  rebound_shot_on_goal = `RB/2C SOG?`,
+                                  rebound_goal = `RB/2C G?`,
+                                  #home_score = `Home Score State`,
+                                  goalie_number = Goalie,
+                                  game_id = `Game ID`,
+                                  date = Date,
+                                  home_team = `Home:`,
+                                  away_team = `Away:`) %>% 
+                           mutate(scoring_chance_pass = ifelse(is.na(scoring_chance_pass), 0, 1),
+                                  shot_on_goal = ifelse(is.na(shot_on_goal), 0, 1),
+                                  goal =  ifelse(is.na(goal), 0, 1),
+                                  rebound_shot_on_goal = ifelse(is.na(rebound_shot_on_goal), 0, 1),
+                                  rebound_goal = ifelse(is.na(rebound_goal), 0, 1),
+                                  odd_man = paste0(substr(odd_man, 1, 1), "-",
+                                                   substr(odd_man, nchar(odd_man), nchar(odd_man))),
+                                  date = as.character(date) # This allows bind_rows to work
+                           ) %>% 
+                           select(-player_rebound, -time, -c(a1, a2, a3, game_id,
+                                                                       `Home Goalies`, `PBP Time` 
+                                                                       )) %>% 
+                           mutate(Shooter = as.character(Shooter)))
+
+# Bind all the dataframes in the list into one long dataframe!
+pass_1617 <- bind_rows(pass_list_1617)
+
+
+# 2017-2018 Season--------------------------------------------------------------------------------------
+# List all the files in the folder
+file_list <- list.files(path = "/Users/jasonbaik/Dropbox/passing_project/passing_game_regular_season_1718",
+           full.names = TRUE)
+
+# Import and manipulate data
+# Left out "time" and "player_rebound" columns beceause they were causing errors
+pass_list_1718<- lapply(file_list, function(x) read_excel(x) %>% 
+                      rename(period = Period, 
+                             time = Time,
+                             strength = Strength,
+                             team = Team,
+                             #shooter = Shooter,
+                             shot_type = `Shot Type?`,
+                             a1 = A1,
+                             a2 = A2,
+                             a3 = A3, 
+                             a1_zone = `A1 Zone`,
+                             a2_zone = `A2 Zone`,
+                             a3_zone = `A3 Zone`,
+                             scoring_chance_pass = `SC?`,
+                             shot_on_goal = `SOG?`,
+                             odd_man = Oddman,
+                             goal = `G?`,
+                             player_rebound = `RB/2C`,
+                             rebound_shot_on_goal = `RB/2C SOG?`,
+                             rebound_goal = `RB/2C G?`,
+                             home_score = `Home Score State`,
+                             goalie_number = Goalie,
+                             game_id = `Game ID`,
+                             date = Date,
+                             home_team = `Home:`,
+                             away_team = `Away:`) %>% 
+                      mutate(scoring_chance_pass = ifelse(is.na(scoring_chance_pass), 0, 1),
+                             shot_on_goal = ifelse(is.na(shot_on_goal), 0, 1),
+                             goal =  ifelse(is.na(goal), 0, 1),
+                             rebound_shot_on_goal = ifelse(is.na(rebound_shot_on_goal), 0, 1),
+                             rebound_goal = ifelse(is.na(rebound_goal), 0, 1),
+                             odd_man = paste0(substr(odd_man, 1, 1), "-",
+                                              substr(odd_man, nchar(odd_man), nchar(odd_man))),
+                             date = as.character(date))
+                      %>% 
+                      select(-player_rebound, -time))
+
+# Bind all the dataframes in the list into one long dataframe!
+pass_1718 <- bind_rows(pass_list_1718)
+
+
+
+
+
+# Data Manipulation -------------------------------------------------------
+
+pass_1516 <- pass_1516 %>% 
+  mutate(season = "first")
+
+pass_1617 <- pass_1617 %>% 
+  mutate(season = "second")
+
+pass_1718 <- pass_1718 %>% 
+  mutate(season = "third", 
+         Shooter = as.character(Shooter))
+
+
+
+# Combine 1516, 1617, 1718
+pass_final <- bind_rows(pass_1516, pass_1617, pass_1718)
+```
+
+
+```{r}
+pass_final %>% 
+  select(shot_on_goal, goal, odd_man, shot_type, a1_zone, rebound_shot_on_goal) %>% 
+  head(10) %>% 
+  kable() %>% 
+  kable_styling(bootstrap_options = "striped")
+```
+
+There are 45 variables and over 150,000 observations in this dataset. Some notable variables that I will be using for my analysis include shot_on_goal (1 for yes and 0 for no), goal (1 for yes and 0 for no), odd_man (number of players involved in player advantages during rushes), shooting_percentage (number of goals / number of shots on goals), shot_type (one-timer, slap shot, wrist/snap shot, backhand, etc), a1_zone (zone that the primary assist originated), and rebound_shot_on_goal (if a rebound occured and resulted in a shot on goal).
+
+There are two analysis based upon this datset; [Ryan Stimson's paper](http://www.sloansportsconference.com/wp-content/uploads/2017/02/1614.pdf) discusses repeatability of certain metrics on a team level and player level. [A NHL Numbers post](https://www.nhlnumbers.com/2016/08/10/passing-project-dangerous-primary-shot-contributions) covers repeatability of passes that crosses through the royal road (the line that goes directly through the middle of the ice from one net to the other) and provides visualizations. 
+
+In my blog post, I will look at _repeatability_ of shots taken during rushes with player advantages, shooting percentages, rebound shots, and rebound shooting percentages in 5 on 5 situations.
+
+## Visual Identification of Linear Regression Graphs and Repeatability 
+
+This article is filled with scatterplots with linear regression lines. I've grouped the data by teams and plotted the first half statistics from the 2015-2016, 2016-2017, and 2017-2018 seasons on the x-axis, the second half statistics from the 2015-2016, 2016-2017, and 2017-2018 season the on the y-axis, and generated a smoothed line with a confidence band. It is a 95% confidence interval on the slope of the regression line. 
+
+* If I can draw a horizontal line through the confidence bands, this means there exists a regression line with a slope of 0. This further indicates that there is _no significant relationship between the x-variable and the y-variable._
+* If I can not draw a horizontal line through the confidence bands, this means that a regression line with a slope of 0 falls outside the 95% confidence band. In other words, there is _a significant relationship between the x-variable and the y-variable._
+
+In this analysis, I designated the midpoint of each of the three seasons as Jan 1st.  All the games before that date are labelled as the first half of the season while the games after that date are labelled as the second half. In terms of the linear regression graphs, the x-variable is a statistic from the first half of the season and the y-variable is a statistic from the second half of the season. As a result, we are really examining the relationship between the past and future of a statistic, or the _repeatability_ of a statistic.
+
+
+
+# Repeatability of odd-man rush shots
+
+First, let's examine if shots taken in rushes with player advantages are repeatable. 
+
+```{r, warning=FALSE}
+pass_odd_man <- pass_final %>%
+  filter(strength == "5v5") %>% 
+  # Further divide odd_man rushes by number of advantage in men
+  mutate(odd_man = ifelse(odd_man == "NA-NA", "non_odd_man",
+                          ifelse(odd_man %in% c("1-0", "2-1", "3-2", "4-3"), "one_man", 
+                                 ifelse(odd_man %in% c("2-0", "3-1", "4-2", "3-0"), "two_plus_man",
+                                        "NA")))) %>% 
+  mutate(half = case_when(
+    date <= as.Date("2016-01-01") ~ "first",
+    date > as.Date("2016-01-01") & date < as.Date("2016-07-01") ~ "second",
+    date >= as.Date("2016-10-01") & date <= as.Date("2017-01-01") ~ "first",
+    date > as.Date("2017-01-01") & date < as.Date("2017-07-01") ~ "second",
+    date >= as.Date("2017-10-01") & date <= as.Date("2018-01-01") ~ "first",
+    date > as.Date("2018-01-01") & date <= as.Date("2018-07-01") ~ "second"
+  )) %>% 
+  group_by(team, season, half, odd_man) %>%
+  # Get total number of shots for each team, half, odd man situation
+  summarise(shots = n()) %>% 
+  filter(!is.na(team), !is.na(half)) %>%
+  spread(key = half, value = shots, fill = 0) %>% 
+  ungroup() %>% 
+  filter(odd_man != "NA")
+```
+
+```{r}
+### Note:At this point, I realized that the number of rows of teams did not match the number of rows of urls of team logos, so I decided to create a function
+
+# Create a function to match number of rows of team logos urls to number of rows for each team
+match_logo <- function(df) {
+  # Configure team logos to match values in odd_man
+  team_freq <- as.data.frame(table(df[["team"]]))
+  empty_list <- list()
+  for (ii in seq(nrow(team_freq))) {
+    empty_list[[ii]]<- rep(team_logo[ii], times =  team_freq[,2][ii])
+  }
+  
+  return(as.vector(unlist(empty_list)))
+}
+```
+
+
+```{r, fig.width = 9, fig.height = 4.5}
+# Let's add on team logo urls to pass_odd_man
+pass_odd_man <- pass_odd_man %>% 
+  mutate(team_logo_url = match_logo(pass_odd_man))
+
+# Let's change the labels on the facets:
+odd_man <- list(
+  "non_odd_man" = "No player advantage",
+  "one_man" = "One player advantage",
+  "two_plus_man" = "Two+ player advantage"
+)
+
+odd_man_labeller <- function(variable,value){
+  return(odd_man[value])
+}
+
+
+# Plot
+
+ggplot(pass_odd_man, aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.08) +
+  geom_smooth(method = "lm") + 
+  facet_wrap(~odd_man, scales = "free", labeller = odd_man_labeller) +
+  coord_fixed() +
+  labs(x = "First Half Shots",
+       y = "Second Half Shots") +
+  ggtitle("Repeatability of Total Shots Facetted by Odd Man Rushes") 
+```
+
+
+* Shots taken on rushes where the attacking team has more players than the defending team are repeatable over a season when there is no player advantage and one player advantage (Breakaways, 2 on 1 rushes, 3 on 2 rushes, and 4 on 3 rushes). 
+* This leads me to think that its increadibly hard to predict the number of shots in two-plus player advantages (2 on 0 rushes", 3 on 1 rushes, 4 on 2 rushes, 3 on 0 rushes) over a season. 
+* Perhaps, teams with an incredible advantage in rushes have too many options at their disposal, and thus these rushes do not always result in shots on net. 
+* Rather, they could make one extra pass that extinguishes the offensive threat or the extra pass could be intercepted by the defender(s). 
+* As there is _no repeatability_ in two plus player advantage, I will ignore these situations for this analysis.
+
+
+# Repeatability of shooting percentage
+
+Let's examine shooting percentages and see if we can detect the same trend.
+
+```{r, fig.width = 9, fig.height = 4.5}
+pass_shooting_percentage <- pass_final %>%
+  filter(strength == "5v5") %>% 
+  mutate(odd_man = ifelse(odd_man == "NA-NA", "non_odd_man",
+                          ifelse(odd_man %in% c("1-0", "2-1", "3-2", "4-3"), "one_man", 
+                                 ifelse(odd_man %in% c("2-0", "3-1", "4-2", "3-0"), "two_plus_man",
+                                        "NA")))) %>% 
+  mutate(half = case_when(
+    date <= as.Date("2016-01-01") ~ "first",
+    date > as.Date("2016-01-01") & date < as.Date("2016-07-01") ~ "second",
+    date >= as.Date("2016-10-01") & date <= as.Date("2017-01-01") ~ "first",
+    date > as.Date("2017-01-01") & date < as.Date("2017-07-01") ~ "second",
+    date >= as.Date("2017-10-01") & date <= as.Date("2018-01-01") ~ "first",
+    date > as.Date("2018-01-01") & date <= as.Date("2018-07-01") ~ "second"
+  )) %>% 
+  group_by(team, season, half, odd_man) %>% 
+  # Calculate the shooting percentage, defined as the number of goals over the number of shots on goal
+  summarise(shooting_percentage = 100 * (sum(goal) / sum(shot_on_goal))) %>% 
+  filter(!is.na(team), !is.na(half)) %>%
+  spread(key = half, value = shooting_percentage) %>% 
+  ungroup() %>% 
+  mutate(team_logo_url = match_logo(.))
+
+# Ignore two_plus_man
+pass_shooting_percentage %>% 
+  filter(odd_man != "two_plus_man", odd_man != "NA") %>% 
+ggplot(aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.06)+
+  geom_smooth(method = "lm") +
+  facet_wrap(~odd_man, scales = "free", labeller = odd_man_labeller) +
+  coord_fixed() +
+  labs(x = "First Half Shooting %",
+       y = "Second Half Shooting %") +
+  ggtitle("Repeatability of Shooting % Facetted by Odd Man Rushes")
+```
+
+* The scales for the two facetted graphs are vastly different: shooting percentages across the whole season are _significantly higher_ in one player advantage rushes, which is reasonable given the offensive freedom players have. 
+* Interestingly, shooting percentages are indeed not repeatable over a season during no player advantage rushes since I can draw a horizontal graph through the confidence band. 
+* Shooting percentages are repeatable during one player advantage rushes as I can not draw a horizontal graph through the confidence band.
+
+
+# Shooting percentages by Zone of Primary Pass
+
+Now, I observe the repeatability of shooting percentages facetted by the zone the primary pass (the pass right before the shot) originated from.
+
+```{r, warning=FALSE, fig.width = 9, fig.height = 4.5}
+pass_shooting_percentage_zone <- pass_final %>%
+  filter(strength == "5v5") %>% 
+  mutate(half = case_when(
+    date <= as.Date("2016-01-01") ~ "first",
+    date > as.Date("2016-01-01") & date < as.Date("2016-07-01") ~ "second",
+    date >= as.Date("2016-10-01") & date <= as.Date("2017-01-01") ~ "first",
+    date > as.Date("2017-01-01") & date < as.Date("2017-07-01") ~ "second",
+    date >= as.Date("2017-10-01") & date <= as.Date("2018-01-01") ~ "first",
+    date > as.Date("2018-01-01") & date <= as.Date("2018-07-01") ~ "second"
+  )) %>% 
+# Extract out the last letter in a1_zone, which shows the lane in which the pass originiates from
+mutate(a1_zone = substr(a1_zone, start = nchar(a1_zone), stop = nchar(a1_zone)),
+         a1_zone = tolower(a1_zone),
+         a1_zone = ifelse(a1_zone == "c", "center_lane",
+                          ifelse(a1_zone == "f", "faceoff",
+                                 ifelse(a1_zone == "l", "left_lane",
+                                        ifelse(a1_zone == "p", "point",
+                                               ifelse(a1_zone == "r", "right_lane", NA)))))) %>% 
+  group_by(team, season, half, a1_zone) %>% 
+  summarise(shooting_percentage = 100 *  (sum(goal) / sum(shot_on_goal))) %>% 
+  filter(!is.na(team), !is.na(half), !is.na(a1_zone), !is.na(shooting_percentage)) %>% 
+  spread(key = half, value = shooting_percentage) %>% 
+  ungroup() %>% 
+  mutate(team_logo_url = match_logo(.)) %>% 
+  # Filter out 0% and 100% shooting percentages, which makes no sense.
+  filter(!(first %in% c(0, 100)), !(second %in% c(0, 100)))
+
+
+
+
+# Let's change the labels on the facets:
+pass_lanes <- list(
+  "left_lane" = "Left Lane",
+  "faceoff" = "Faceoff",
+  "center_lane" = "Center Lane",
+  "point" = "passes back to the point",
+  "right_lane" = "Right Lane",
+  "not_categorized" = "None"
+)
+
+pass_lanes_labeller <- function(variable,value){
+  return(pass_lanes[value])
+}
+
+# Change order of facets
+pass_shooting_percentage_zone$a1_zone <- factor(pass_shooting_percentage_zone$a1_zone,
+                                                levels = c("left_lane",
+                                                           "faceoff",
+                                                           "center_lane",
+                                                           "point",
+                                                           "right_lane")) 
+
+# Plot
+ pass_shooting_percentage_zone %>%
+   filter(a1_zone %in% c("left_lane", "center_lane", "right_lane")) %>% 
+   ggplot(aes(x = first, y = second)) +
+   geom_image(aes(image = team_logo_url), size = 0.09)+
+   geom_smooth(method = "lm") +
+   facet_wrap(~a1_zone, scales = "free", labeller = pass_lanes_labeller) +
+   labs(x = "First Half Shooting %",
+        y = "Second Half Shooting %") +
+   ggtitle("Repeatability of Shooting % During Odd Man Rushes Facetted By Lanes of passes")
+```
+
+* The center lane facet shows no repeatability between first half shooting percentage and second half shooting percentage, but is the closest out of all three graphs to being repeatable.
+
+* None of these graphs show any signs of repeatability since I can draw a horizontal line through all these graphs. 
+
+* As a result, _the lane of a primary pass does not help explain the discrepancy in repeatability of shooting percentages in odd man rushes._
+
+# Repeatability of rebound shots
+
+During the course of a game, there is bound to be a rebound. Most "trash" goals scored in the "dirty" areas are scored off of a rebound. Let's examine the repeatability of rebound shots over a season.
+
+```{r}
+pass_final %>% 
+  filter(strength == "5v5") %>% 
+  mutate(half = case_when(
+    date <= as.Date("2016-01-01") ~ "first",
+    date > as.Date("2016-01-01") & date < as.Date("2016-07-01") ~ "second",
+    date >= as.Date("2016-10-01") & date <= as.Date("2017-01-01") ~ "first",
+    date > as.Date("2017-01-01") & date < as.Date("2017-07-01") ~ "second",
+    date >= as.Date("2017-10-01") & date <= as.Date("2018-01-01") ~ "first",
+    date > as.Date("2018-01-01") & date <= as.Date("2018-07-01") ~ "second"
+  ))  %>% 
+  group_by(team, season, half) %>% 
+  summarise(rebound_shot_per_game = sum(rebound_shot_on_goal) / length(unique(date))) %>% 
+  filter(!is.na(team), !is.na(half)) %>% 
+  spread(key = half, value = rebound_shot_per_game) %>% 
+  ungroup() %>%
+  mutate(team_logo_url = match_logo(.)) %>% 
+  ggplot(aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.04, by = "height") +
+  geom_smooth(method = "lm") +
+  labs(x = "First Half Rebound Shots",
+       y = "Second Half Rebound Shots") +
+  ggtitle("Repeatability of Rebound Shots")
+```
+
+* This graph clearly shows that rebound shots are not repeatable over a given season. 
+* This suggests that rebounds are intrinsically hard to predict over an entire season. Teams face different styles of goaltenders and even different goaltenders for each team if the team plays its backup or AHL goaltender. Perhaps, goaltenders have varying abilities to control rebounds. 
+
+
+# Repeatability of rebound shooting percentage
+
+To dig deeper into the effectiveness of rebounds in offensive situations, I've defined _rebound shooting percentage as the percentage of rebound goals scored._ Let's now examine its repeatability.
+
+```{r, fig.width = 9, fig.height = 4.5}
+pass_final %>% 
+  filter(strength == "5v5") %>% 
+  mutate(half = case_when(
+    date <= as.Date("2016-01-01") ~ "first",
+    date > as.Date("2016-01-01") & date < as.Date("2016-07-01") ~ "second",
+    date >= as.Date("2016-10-01") & date <= as.Date("2017-01-01") ~ "first",
+    date > as.Date("2017-01-01") & date < as.Date("2017-07-01") ~ "second",
+    date >= as.Date("2017-10-01") & date <= as.Date("2018-01-01") ~ "first",
+    date > as.Date("2018-01-01") & date <= as.Date("2018-07-01") ~ "second"
+  )) %>%  
+  group_by(team, season, half) %>% 
+  summarise(rebound_percentage = 100 * (sum(rebound_goal) / sum(rebound_shot_on_goal))) %>% 
+  filter(!is.na(team), !is.na(half)) %>% 
+  spread(key = half, value = rebound_percentage) %>% 
+  ungroup() %>% 
+  mutate(team_logo_url = match_logo(.)) %>% 
+  ggplot(aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.04, by = "height") +
+  geom_smooth(method = "lm") +
+  coord_fixed() +
+  labs(x = "First Half Rebound %",
+       y = "Second Half Rebound %") +
+  ggtitle("Repeatability of Rebound Shooting %")
+```
+
+* Overall, rebound shooting percentages are not repeatable since I can draw a horizontal line through the confidence band. 
+* This again suggests that rebounds are a random occurence during a hockey game. 
+* Furthermore, over an entire season, there exist unpredictable offensive situations that lead to rebounds and thus, make it impossible to predict.
+
+# Conclusion
+
+TODO
+

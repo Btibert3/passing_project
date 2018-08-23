@@ -1,0 +1,15 @@
+unnamed-chunk-1	library	tidyverse	ggimage	kableExtra
+unnamed-chunk-2	pass	read_excel	%>%	rename	Period	Time	Strength	Team	Shooter	`Shot Type?`	A1	A2	A3	`A1 Zone`	`A2 Zone`	`A3 Zone`	`SC?`	`SOG?`	Oddman	`G?`	`RB/2C`	`RB/2C SOG?`	`RB/2C G?`	`Home Score State`	Goalie	`Game ID`	Date	`Home:`	`Away:`	mutate	ifelse	is.na	scoring_chance_pass	shot_on_goal	goal	rebound_shot_on_goal	rebound_goal	paste0	substr	odd_man	nchar
+unnamed-chunk-3	pass	ifelse
+unnamed-chunk-4	team_logo	c
+unnamed-chunk-5	pass	%>%	select	shot_on_goal	goal	odd_man	shot_type	a1_zone	rebound_shot_on_goal	head	kable	kable_styling	c
+unnamed-chunk-6	pass_odd_man	pass	%>%	mutate	if_else	date	as.Date	ifelse	odd_man	%in%	c	filter	strength	group_by	team	half	summarise	n	is.na	spread	shots	ungroup
+unnamed-chunk-7	match_logo	team_freq	as.data.frame	table	df	empty_list	list	ii	seq	nrow	rep	team_logo	return	as.vector	unlist
+unnamed-chunk-8	pass_odd_man	%>%	mutate	match_logo	odd_man	list	odd_man_labeller	return	value	ggplot	aes	first	second	geom_image	team_logo_url	geom_smooth	facet_wrap	labs	ggtitle	coord_fixed
+unnamed-chunk-9	pass_shooting_percentage	pass	%>%	mutate	if_else	date	as.Date	ifelse	odd_man	%in%	c	filter	strength	group_by	team	half	summarise	sum	goal	shot_on_goal	is.na	spread	shooting_percentage	ungroup	match_logo	.	ggplot	aes	first	second	geom_image	team_logo_url	geom_smooth	facet_wrap	odd_man_labeller	coord_fixed	labs	ggtitle
+unnamed-chunk-10	pass_shooting_percentage_zone	pass	%>%	mutate	if_else	date	as.Date	substr	a1_zone	nchar	tolower	ifelse	filter	strength	group_by	team	half	summarise	sum	goal	shot_on_goal	is.na	spread	shooting_percentage	ungroup	match_logo	.	pass_lanes	list	pass_lanes_labeller	return	value	factor	c	%in%	ggplot	aes	first	second	geom_image	team_logo_url	geom_smooth	facet_wrap	coord_fixed	labs	ggtitle
+unnamed-chunk-11	pass	%>%	mutate	if_else	date	as.Date	filter	strength	group_by	team	half	summarise	sum	rebound_goal	rebound_shot_on_goal	is.na	spread	rebound_percentage	ungroup	ggplot	aes	first	second	geom_image	team_logo	geom_smooth	coord_fixed	labs	ggtitle
+unnamed-chunk-12	pass	tolower	shot_type_names	list	shot_type_labeller	return	value	pass_shot_type	%>%	mutate	if_else	date	as.Date	filter	strength	shot_type	%in%	c	is.na	group_by	team	half	summarise	sum	goal	shot_on_goal	spread	shooting_percentage	ungroup	match_logo	.	ggplot	aes	first	second	geom_image	team_logo_url	geom_smooth	facet_grid	coord_fixed	labs	ggtitle
+unnamed-chunk-13	pass	%>%	mutate	if_else	date	as.Date	filter	strength	group_by	team	half	summarise	sum	rebound_goal	rebound_shot_on_goal	is.na	spread	rebound_percentage	ungroup	ggplot	aes	first	second	geom_image	team_logo	geom_smooth	coord_fixed	labs	ggtitle
+unnamed-chunk-14	total_goals	pass	%>%	mutate	ifelse	odd_man	%in%	c	filter	strength	group_by	summarise	sum	goal	T	kable	shooting_percentage	round	shot_on_goal
+unnamed-chunk-15	pass	%>%	mutate	ifelse	odd_man	%in%	c	filter	strength	group_by	summarise	sum	goal	T	round	shot_on_goal

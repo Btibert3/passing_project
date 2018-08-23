@@ -1,0 +1,401 @@
+---
+title: "Examining Repeatability in Odd Man Rushes"
+author: "Jason Baik"
+date: "4/6/2018"
+output: 
+  html_document:
+    toc: yes
+    toc_float: yes
+    code_folding: show
+    theme: readable
+    highlight: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=2,
+                      cache.rebuild = F, 
+                      message = F, warning = F,
+                      autodep=TRUE,
+                      error = TRUE, comment = "")
+```
+
+### Key Takeaways
+
+
+
+### Introduction
+I will be using the 2015-2016 Passing Project Data organized by [Ryan Stimson](https://twitter.com/RK_Stimp). The data was collected by a group of volunteers who tracked every pass leading to a shot. According to his [MIT Sloan Sports Analytics Conference paper](http://www.sloansportsconference.com/wp-content/uploads/2017/02/1614.pdf)
+, "Each tracker was required to complete 2 - 3 training games for validation by the project leader to ensure consistency in classification of passes and recording of data. Occasional spot-checking of games was also conducted. 565 total games were tracked from the 2015-2016 season"
+
+This article is geared for beginners and experts alike as I will be walking through the code chunks by means of comments on top of each code chunk.
+
+### Read in dataset and manipulate for analysis
+```{r}
+library(tidyverse)
+library(ggimage)
+```
+
+```{r, warning = FALSE}
+pass <- readxl::read_excel("~/Dropbox/passing_project/passing_data_code/passing_data_1516.xlsx") %>% 
+  rename(period = Period, 
+         time = Time,
+         strength = Strength,
+         team = Team,
+         shooter_number = Shooter,
+         shot_type = `Shot Type?`,
+         a1 = A1,
+         a2 = A2,
+         a3 = A3, 
+         a1_zone = `A1 Zone`,
+         a2_zone = `A2 Zone`,
+         a3_zone = `A3 Zone`,
+         scoring_chance_pass = `SC?`,
+         shot_on_goal = `SOG?`,
+         odd_man = Oddman,
+         goal = `G?`,
+         player_rebound = `RB/2C`,
+         rebound_shot_on_goal = `RB/2C SOG?`,
+         rebound_goal = `RB/2C G?`,
+         home_score = `Home Score State`,
+         goalie_number = Goalie,
+         game_id = `Game ID`,
+         date = Date,
+         home_team = `Home:`,
+         away_team = `Away:`) %>% 
+  mutate(scoring_chance_pass = ifelse(is.na(scoring_chance_pass), 0, 1),
+         shot_on_goal = ifelse(is.na(shot_on_goal), 0, 1),
+         goal =  ifelse(is.na(goal), 0, 1),
+         rebound_shot_on_goal = ifelse(is.na(rebound_shot_on_goal), 0, 1),
+         rebound_goal = ifelse(is.na(rebound_goal), 0, 1),
+         odd_man = paste0(substr(odd_man, 1, 1), "-",
+                                    substr(odd_man, nchar(odd_man), nchar(odd_man)))
+  )
+```
+
+```{r}
+# Change NA-NA to NA in odd_man column for less typing
+pass[["odd_man"]] <- ifelse(pass[["odd_man"]] == "NA-NA", "NA", pass[["odd_man"]])
+```
+
+```{r}
+# Team logos will be drawn on my graphs using the ggimage package.
+team_logo <- c("http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Ducks_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Coyotes_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Bruins_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Sabres_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/carolina.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_BlueJackets_Primary.png",
+                "http://www.capsinfo.com/images/NHL_Team_Logos/calgary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/chicago.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/colorado.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Stars_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/detroit.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Oilers_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Panthers_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Kings_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Wild_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/montreal.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/newjersey.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Predators_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NY-Islanders-Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/newyorkr.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Senators_Primary.png",
+               "http://www.stickpng.com/assets/images/5a4fbba3da2b4f099b95da1a.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Penguins_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Sharks_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/stlouis.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Lightning_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_MapleLeafs_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/Vancouver_Canucks.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Jets_Primary.png",
+               "http://www.capsinfo.com/images/NHL_Team_Logos/NHL_Capitals_Primary.png"
+)
+
+```
+
+### Examine the data
+```{r}
+glimpse(pass)
+```
+
+```{r}
+head(pass)
+```
+
+As you may see, there are 25 variables and over 48,000 observations in this dataset. Some notable variables that I will be using for my analysis include shot_type (one-timer, slap shot, wrist/snap shot, backhand, etc),
+a1_zone (zone that the primary assist originated), scoring_chance_pass (if the pass led to a scoring chance), and rebound_shot_on_goal (if a rebound occured and resulted in a shot on goal).
+
+There is a couple literature that I've found that analyzes this dataset. [Ryan Stimson's paper](http://www.sloansportsconference.com/wp-content/uploads/2017/02/1614.pdf) discusses repeatability of certain metrics on a team level and player level. This post on [NHLNumbers](https://www.nhlnumbers.com/2016/08/10/passing-project-dangerous-primary-shot-contributions) discusses repeatability of royal road passing and nicely provides visualizations. 
+
+In this blog post, I will solely look at repeatability of number of odd-man rush shots, shooting percentages, and rebound percentages in 5v5 situations.
+
+
+
+### Repeatability of odd-man rush shots
+
+First, let's examine if shots taken in odd-man rushes are repeatable. Repeatability was tested using **split half correlations** and I split the 2015-2016 season into two halves by designating the midpoint of the season as Jan 1st, 2016.
+
+```{r, warning=FALSE}
+pass_odd_man <- pass %>%
+  # Indicate whether data is from first half of the season (Before 2016-01-01) or the second half (After 2016-01-01)
+  mutate(half = if_else(date > as.Date("2016-01-01"), "second", "first")) %>% 
+  # Further divide odd_man rushes by number of advantage in men
+  mutate(odd_man = ifelse(odd_man == "NA-NA", "non_odd_man",
+                          ifelse(odd_man %in% c("1-0", "2-1", "3-2", "4-3"), "one_man", 
+                                 ifelse(odd_man %in% c("2-0", "3-1", "4-2", "3-0"), "two_plus_man",
+                                        "NA")))) %>% 
+  filter(strength == "5v5") %>% 
+  group_by(team, half, odd_man) %>%
+  # Get total number of shots for each team, half, odd man situation
+  summarise(shots = n()) %>% 
+  filter(!is.na(team), !is.na(half)) %>%
+  spread(key = half, value = shots, fill = 0) %>% 
+  ungroup()
+
+```
+
+```{r}
+### Note:At this point, I realized that the number of rows of teams did not match the number of rows of urls of team logos, so I decided to create a function
+
+# Create a function to match number of rows of team logos urls to number of rows for each team
+match_logo <- function(df) {
+  # Configure team logos to match values in odd_man
+  team_freq <- as.data.frame(table(df[["team"]]))
+  empty_list <- list()
+  for (ii in seq(nrow(team_freq))) {
+    empty_list[[ii]]<- rep(team_logo[ii], times =  team_freq[,2][ii])
+  }
+  
+  return(as.vector(unlist(empty_list)))
+}
+```
+
+
+```{r}
+# Let's add on team logo urls to pass_odd_man
+pass_odd_man <- pass_odd_man %>% 
+  mutate(team_logo_url = match_logo(pass_odd_man))
+
+# Let's change the labels on the facets:
+odd_man <- list(
+  "NA" = "No odd man",
+  "one_man" = "One man rush",
+  "two_plus_man" = "More than one man rush"
+)
+
+odd_man_labeller <- function(variable,value){
+  return(odd_man[value])
+}
+
+
+# Plot
+ggplot(pass_odd_man, aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.08) +
+  geom_smooth(method = "lm") + 
+  facet_wrap(~odd_man, scales = "free", labeller = odd_man_labeller) +
+  coord_fixed() +
+  labs(x = "First Half",
+       y = "Second Half") +
+  ggtitle("Total Number of Shots for 30 NHL Teams Facetted by Odd Man Rushes")
+```
+
+**I can assert repeatability in a linear regression graph when I can not draw a horizontal line through the confidence band surrounding the regression line.**
+
+This facetted graph shows that shots taken on odd-man rushes are repeatable over a season when there is a one-man advantage and no odd man rushes. This leads me to think that its increadibly hard to predict the number of shots in two-plus odd-man situation over a season. Perhaps, teams with an incredible advantage in rushes have too many options at their disposal, and thus these rushes do not always result in shots on net. Rather, they could make one extra pass that extinguishes the offensive threat or the extra pass could be intercepted by the defender(s). **My goal in the rest of this post is to examine other varaibles to explain this discrepancy in repeatability of odd man rushes** 
+
+
+### Repeatability of shooting percentage
+```{r}
+pass_shooting_percentage <- pass %>%
+  mutate(half = if_else(date > as.Date("2016-01-01"), "second", "first")) %>% 
+  mutate(odd_man = ifelse(odd_man == "NA-NA", "non_odd_man",
+                          ifelse(odd_man %in% c("1-0", "2-1", "3-2", "4-3"), "one_man", 
+                                 ifelse(odd_man %in% c("2-0", "3-1", "4-2", "3-0"), "two_plus_man",
+                                        "NA")))) %>% 
+  filter(strength == "5v5") %>% 
+  group_by(team, half, odd_man) %>% 
+  # Calculate the shooting percentage, defined as the number of goals over the number of shots on goal
+  summarise(shooting_percentage = sum(goal) / sum(shot_on_goal)) %>% 
+  filter(!is.na(team), !is.na(half)) %>%
+  spread(key = half, value = shooting_percentage) %>% 
+  ungroup() %>% 
+  mutate(team_logo_url = match_logo(.))
+
+ggplot(pass_shooting_percentage, aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.06)+
+  geom_smooth(method = "lm") +
+  facet_wrap(~odd_man, scales = "free", labeller = odd_man_labeller) +
+  coord_fixed()
+```
+
+Shooting percentages are indeed not repeatable over a season since I can draw a horizontal graph through the confidence band. This leads me to think that in all situations, shooting percentages are not repeatable, but when there is a one-man advantage or no odd man rushes, they are repeatable. Now, I observe the difference in repeatability of shooting percentages according to the zone of the primary pass
+
+### Shooting percentages by Zone of Primary Pass
+
+```{r, warning=FALSE}
+pass_shooting_percentage_zone <- pass %>%
+  mutate(half = if_else(date > as.Date("2016-01-01"), "second", "first")) %>% 
+  # Extract out the last letter in a1_zone, which shows the lane in which the pass originiates from
+  mutate(a1_zone = substr(pass$a1_zone, start = nchar(pass$a1_zone), stop = nchar(pass$a1_zone)),
+         a1_zone = tolower(a1_zone),
+         a1_zone = ifelse(a1_zone == "c", "center_lane",
+                          ifelse(a1_zone == "f", "faceoff",
+                                 ifelse(a1_zone == "l", "left_lane",
+                                        ifelse(a1_zone == "p", "point",
+                                               ifelse(a1_zone == "r", "right_lane", NA)))))) %>% 
+  filter(strength == "5v5") %>% 
+  group_by(team, half, a1_zone) %>% 
+  summarise(shooting_percentage = sum(goal) / sum(shot_on_goal)) %>% 
+  filter(!is.na(team), !is.na(half), !is.na(a1_zone)) %>% 
+  spread(key = half, value = shooting_percentage) %>% 
+  ungroup() %>% 
+  mutate(team_logo_url = match_logo(.))
+
+
+
+
+# Let's change the labels on the facets:
+pass_lanes <- list(
+  "center_lane" = "Center Lane",
+  "faceoff" = "Faceoff",
+  "left_lane" = "Left Lane",
+  "point" = "Passes back to the point",
+  "right_lane" = "Right Lane",
+  "not_categorized" = "None"
+)
+
+pass_lanes_labeller <- function(variable,value){
+  return(pass_lanes[value])
+}
+
+# Plot
+ggplot(pass_shooting_percentage_zone,aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.09)+
+  geom_smooth(method = "lm") +
+  facet_wrap(~a1_zone, scales = "free", labeller = pass_lanes_labeller) +
+  coord_fixed() +
+  labs(x = "First Half",
+       y = "Second Half") +
+  ggtitle("Repeatability of Shooting Percentages Facetted By Lane of Pass")
+```
+
+None of these graphs show any signs of repeatability since I can draw a horizontal line through all these graphs. As a result, these graph do not help explain the discrepancy in repeatability in odd man rushes. Let's now look at shooting percentages by shot types.
+
+### Shooting percentage by shot type
+```{r, warning = FALSE}
+# The letters should all be lowercase...capitalization doesn't mean anything here
+pass[["shot_type"]] <- tolower(pass[["shot_type"]])
+
+# Rename shot type names
+shot_type_names <- list(
+  "a" = "Wraparound",
+  "b" = "Backhand",
+  "o" = "One-Timer",
+  "r" = "Rebound",
+  "s" = "Slap Shot",
+  "t" = "Tip",
+  "w" = "Wrist/Snap Shot"
+)
+
+shot_type_labeller <- function(variable,value){
+  return(shot_type_names[value])
+}
+
+
+pass_shot_type <- pass %>%
+  mutate(half = if_else(date > as.Date("2016-01-01"), "second", "first")) %>% 
+  filter(strength == "5v5",
+         !(shot_type %in% c("NA", "2c")),
+         !is.na(shot_type)) %>% 
+  group_by(team, half, shot_type) %>% 
+  summarise(shooting_percentage = sum(goal) / sum(shot_on_goal)) %>% 
+  filter(!is.na(team), !is.na(half)) %>% 
+  spread(key = half, value = shooting_percentage) %>% 
+  ungroup() %>% 
+  mutate(team_logo_url = match_logo(.))
+
+
+ggplot(pass_shot_type, aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.09, by = "width")+
+  geom_smooth(method = "lm") +
+  facet_wrap(~shot_type, scales = "free",
+             labeller = shot_type_labeller) +
+  coord_fixed() +
+  labs(x = "First Half",
+       y = "Second Half") +
+  ggtitle("Repeatability of Shooting Percentages by Shot Types")
+```
+
+Here, we can see discrepancies in repeatability: wraparounds are the only repeatable shot types, and all other shot types, such as backhands, one-timers, rebounds, slap shots, tips, and wrist/snap shots are non-repeatable. This signifies that the non-repeatability of two-plus odd man rushes are explicable given that on the rushes, players are likely to take a wrist/snap shot or a one-time, which are non-repeatable. In other words, players take non repeatable types of shots on an odd man rush.
+
+### Repeatability of rebound percentage
+```{r}
+pass %>% 
+  mutate(half = if_else(date > as.Date("2016-01-01"), "second", "first")) %>% 
+  filter(strength == "5v5") %>% 
+  group_by(team, half) %>% 
+  summarise(rebound_percentage = sum(rebound_goal) / sum(rebound_shot_on_goal)) %>% 
+  filter(!is.na(team), !is.na(half)) %>% 
+  spread(key = half, value = rebound_percentage) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo), size = 0.04, by = "height") +
+  geom_smooth(method = "lm") +
+  coord_fixed()
+```
+
+We see that overall, rebound percentages are non repeatable since I can draw a horizontal line through the confidence band. Let's look at rebound percentages facetted by odd-man rush situations and see if there is any relationship with number of shots.
+
+### Reboud percentages facetted by odd man rush situations
+```{r, warning=FALSE, }
+pass_odd_man_rebound <- pass %>% 
+  mutate(half = if_else(date > as.Date("2016-01-01"), "second", "first")) %>% 
+  mutate(odd_man = ifelse(odd_man == "NA-NA", "non_odd_man",
+                          ifelse(odd_man %in% c("1-0", "2-1", "3-2", "4-3"), "one_man", 
+                                 ifelse(odd_man %in% c("2-0", "3-1", "4-2", "3-0"), "two_plus_man",
+                                        "NA")))) %>% 
+  filter(strength == "5v5") %>% 
+  group_by(team, half, odd_man) %>% 
+  summarise(rebound_percentage = sum(rebound_goal) / sum(rebound_shot_on_goal)) %>% 
+  filter(!is.na(team), !is.na(half), !is.nan(rebound_percentage),
+         !is.na(rebound_percentage)) %>% 
+  spread(key = half, value = rebound_percentage) %>% 
+  ungroup() %>% 
+  mutate(team_logo_url = match_logo(.))
+
+
+ggplot(pass_odd_man_rebound, aes(x = first, y = second)) +
+  geom_image(aes(image = team_logo_url), size = 0.09) +
+  geom_smooth(method = "lm") +
+  facet_wrap(~odd_man, scales = "free", labeller = odd_man_labeller) +
+  coord_fixed()
+```
+
+
+This facetted graph is very revealing! There is barely any data for one man rushes and two-plus odd man rushes! This could perhaps be explained by my observation above: Perhaps, teams with an incredible advantage in rushes have too many options at their disposal, and thus these rushes do not always result in shots on net. Rather, they could make one extra pass that extinguishes the offensive threat or the extra pass could be intercepted by the defender(s). 
+
+The alternative explanation is players do not produce rebounds in odd man rushes because they score goals more often than not. In the next graph, let's examine if the number of goals increases for odd-man rushes.
+
+```{r}
+# Total goals by odd-man rushes
+pass %>% 
+  mutate(odd_man = ifelse(odd_man == "NA-NA", "non_odd_man",
+                          ifelse(odd_man %in% c("1-0", "2-1", "3-2", "4-3"), "one_man", 
+                                 ifelse(odd_man %in% c("2-0", "3-1", "4-2", "3-0"), "two_plus_man",
+                                        "NA")))) %>% 
+  filter(strength == "5v5") %>% 
+  group_by(odd_man) %>% 
+  summarise(total_goals = sum(goal, na.rm = T)) 
+
+# Shooting percentages by odd-man rushes
+pass %>% 
+  mutate(odd_man = ifelse(odd_man == "NA-NA", "non_odd_man",
+                          ifelse(odd_man %in% c("1-0", "2-1", "3-2", "4-3"), "one_man", 
+                                 ifelse(odd_man %in% c("2-0", "3-1", "4-2", "3-0"), "two_plus_man",
+                                        "NA")))) %>% 
+  filter(strength == "5v5") %>% 
+  group_by(odd_man) %>% 
+  summarise(shooting_percentage = round(100* (sum(goal) / sum(shot_on_goal)), 1)) 
+```
+
+Even though there are more goals in non odd man rushes, shooting percentages for both types of odd man rushes are significantly higher than non odd man rushes (23.8% vs 7.2% and 27.7% vs 7.2%). This increase in shooting percentage accounts for the lack of rebounds in odd man rushes-shots that result in goals do not produce rebounds.
